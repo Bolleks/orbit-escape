@@ -6,6 +6,8 @@
 
 **Играть онлайн:** https://bolleks.github.io/orbit-escape/
 
+![Стартовое меню игры](assets/screenshot.jpg)
+
 Всё работает офлайн: BabylonJS и environment-карта лежат в репозитории,
 внешних CDN и запросов нет.
 
