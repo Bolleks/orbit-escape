@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230b0e14'/%3E%3Crect x='5' y='8' width='14' height='11' rx='2.5' fill='none' stroke='%23ffb454' stroke-width='1.8'/%3E%3Crect x='8.4' y='11.4' width='7.2' height='4.6' rx='1.2' fill='%2359c8ff'/%3E%3Cline x1='12' y1='8' x2='12' y2='4.6' stroke='%23ffb454' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='3.8' r='1.5' fill='%23ffb454'/%3E%3C/svg%3E">
+<title>UNIT-07 · Орбитальный забег — раннер на BabylonJS</title>
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- ======= HUD ======= -->
+<div id="hud" aria-hidden="false">
+  <div class="hud-left">
+    <div class="stat">
+      <span class="stat-label">Дистанция</span>
+      <span class="stat-value"><b id="distVal">0</b><i>м</i></span>
+    </div>
+    <div class="stat stat-cells">
+      <span class="stat-label">Ячейки</span>
+      <span class="stat-value"><svg class="cell-ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 17.4 5.75v8.5L10 18.5 2.6 14.25v-8.5Z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="10" cy="10" r="2.6" fill="currentColor"/></svg><b id="cellVal">0</b></span>
+    </div>
+    <div class="stat stat-section" id="sectionStat" hidden>
+      <span class="stat-label" id="sectionLabel">Секция 1</span>
+      <span class="stat-value"><b id="leftVal">3000</b><i>м</i></span>
+    </div>
+  </div>
+  <div class="hud-right">
+    <div class="stat stat-best">
+      <span class="stat-label">Рекорд</span>
+      <span class="stat-value"><b id="bestVal">0</b></span>
+    </div>
+    <button class="icon-btn" id="soundBtn" title="Звук вкл/выкл" aria-label="Переключить звук">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9.5v5h3.6L13 19V5L7.6 9.5H4Z" fill="currentColor"/><path class="wav" d="M16 8.6a4.8 4.8 0 0 1 0 6.8M18.6 6a8.4 8.4 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="mut" d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+    </button>
+    <button class="icon-btn" id="pauseBtn" title="Пауза (P)" aria-label="Пауза">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5.5" width="3.4" height="13" rx="1" fill="currentColor"/><rect x="13.6" y="5.5" width="3.4" height="13" rx="1" fill="currentColor"/></svg>
+    </button>
+  </div>
+  <div class="hud-speed">
+    <span>Скорость</span>
+    <div class="speed-track"><div class="speed-fill" id="speedFill"></div></div>
+  </div>
+  <div id="hint"></div>
+  <div class="hud-upgrades" id="hudUpgrades" aria-label="Установленные улучшения" hidden></div>
+  <div class="hud-boosts" id="hudBoosts" aria-label="Активные бусты" hidden></div>
+</div>
+
+<div id="vignette"></div>
+<div id="toast" hidden></div>
+
+<!-- ======= МЕНЮ ======= -->
+<div class="overlay menu-overlay" id="menu">
+  <header class="menu-top">
+    <div class="menu-brand">
+      <div class="menu-kicker">Орбитальная станция «Кеплер-9» · протокол побега</div>
+      <h1 class="menu-title">UNIT<span>-07</span></h1>
+    </div>
+    <div class="menu-records">
+      <div class="record-chip">
+        <span class="record-label">Рекорд · сюжет</span>
+        <span class="record-value"><b id="menuBest">0</b><i>· <b id="menuBestDist">0</b> м</i></span>
+      </div>
+      <div class="record-chip record-endless">
+        <span class="record-label">Рекорд · бесконечный</span>
+        <span class="record-value"><b id="menuEndlessBest">0</b></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="menu-console">
+    <section class="console-card story-card">
+      <span class="menu-label">Сюжетный режим</span>
+      <div class="btn-col">
+        <button class="btn btn-primary" id="continueBtn" hidden>Продолжить<span class="continue-info" id="continueInfo"></span></button>
+        <button class="btn btn-ghost" id="startBtn">Новая игра</button>
+      </div>
+      <p class="story-goal">2 секции · 2 забега по 3000 м · капсула в конце</p>
+    </section>
+
+    <section class="console-card endless-card">
+      <span class="menu-label">Бесконечный режим</span>
+      <div class="seg" id="endlessSeg" role="radiogroup" aria-label="Секция бесконечного режима">
+        <button data-section="corridor" role="radio" aria-checked="true" class="on">Технический коридор</button>
+        <button data-section="reactor" role="radio" aria-checked="false">Реакторный отсек</button>
+      </div>
+      <button class="btn btn-cyan" id="endlessBtn">Начать забег</button>
+    </section>
+
+    <section class="console-card setup-card">
+      <span class="menu-label">Сложность</span>
+      <div class="seg" id="diffSeg" role="radiogroup" aria-label="Сложность">
+        <button data-diff="easy" role="radio" aria-checked="false">Лёгкая</button>
+        <button data-diff="normal" role="radio" aria-checked="true" class="on">Обычная</button>
+        <button data-diff="hard" role="radio" aria-checked="false">Хардкор</button>
+      </div>
+      <div class="controls-guide" id="guideKb">
+        <div><kbd>A</kbd><kbd>D</kbd><span>полосы</span></div>
+        <div><kbd>W</kbd><span>прыжок</span></div>
+        <div><kbd>S</kbd><span>подкат</span></div>
+        <div><kbd>P</kbd><span>пауза</span></div>
+      </div>
+      <div class="controls-guide" id="guideTouch" hidden>
+        <div><kbd>←</kbd><kbd>→</kbd><span>полосы</span></div>
+        <div><kbd>↑</kbd><span>прыжок</span></div>
+        <div><kbd>↓</kbd><span>подкат</span></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ======= ПАУЗА ======= -->
+<div class="overlay" id="pauseOv" hidden>
+  <div class="panel small-panel">
+    <h2>Пауза</h2>
+    <p class="panel-sub">Системы в режиме ожидания.</p>
+    <div class="btn-col">
+      <button class="btn btn-primary" id="resumeBtn">Продолжить <kbd>P</kbd></button>
+      <button class="btn btn-ghost" id="pauseRestartBtn">Заново <kbd>R</kbd></button>
+      <button class="btn btn-ghost" id="pauseMenuBtn">В меню</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= ИТОГИ ======= -->
+<div class="overlay" id="overOv" hidden>
+  <div class="panel small-panel over-panel">
+    <div class="over-kicker">Столкновение зафиксировано</div>
+    <h2 class="over-title">Корпус разрушен</h2>
+    <div class="over-section" id="overSection" hidden></div>
+    <div class="over-stats">
+      <div><span>Дистанция</span><b id="overDist">0 м</b></div>
+      <div><span>Ячейки</span><b id="overCells">0</b></div>
+      <div class="over-score"><span>Счёт</span><b id="overScore">0</b></div>
+    </div>
+    <div class="over-best">Рекорд: <b id="overBest">0</b><span class="record-badge" id="recordBadge" hidden>Новый рекорд!</span></div>
+    <div class="btn-col">
+      <button class="btn btn-primary" id="againBtn">Ещё раз <kbd>R</kbd></button>
+      <button class="btn btn-ghost" id="overMenuBtn">В меню <kbd>Esc</kbd></button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= СЕРВИСНЫЙ ОТСЕК ======= -->
+<div class="overlay center" id="shopOv" hidden>
+  <div class="panel small-panel shop-panel">
+    <div class="over-kicker shop-kicker">Техническое обслуживание</div>
+    <h2>Сервисный отсек</h2>
+    <p class="panel-sub" id="shopFlavor"></p>
+    <div class="shop-wallet">Энергоячейки: <b id="shopWallet">0</b></div>
+    <div class="shop-cards" id="shopCards"></div>
+    <div class="btn-col">
+      <button class="btn btn-primary" id="shopContinueBtn">Продолжить <kbd>Space</kbd></button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= ШЛЮЗ ======= -->
+<div class="overlay center" id="airlockOv" hidden>
+  <div class="panel small-panel">
+    <div class="over-kicker airlock-kicker">Шлюз</div>
+    <h2 id="airlockTitle">Реакторный отсек</h2>
+    <p class="panel-sub">Выравнивание давления…</p>
+    <div class="btn-col">
+      <button class="btn btn-primary" id="airlockBtn">Войти в секцию <kbd>Space</kbd></button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= ПОБЕДА ======= -->
+<div class="overlay center" id="victoryOv" hidden>
+  <div class="panel small-panel victory-panel">
+    <div class="over-kicker victory-kicker">Протокол побега выполнен</div>
+    <h2 class="victory-title">Эвакуация завершена</h2>
+    <p class="panel-sub victory-line">Капсула стыкуется с транспортником. Где-то там шестеро юнитов его серии — может быть, он их найдёт. А пока — он справился. Как всегда.</p>
+    <div class="over-stats">
+      <div><span>Счёт</span><b id="victoryScore">0</b></div>
+      <div><span>Ячейки</span><b id="victoryCells">0</b></div>
+    </div>
+    <div class="btn-col">
+      <button class="btn btn-primary" id="victoryAgainBtn">Новая игра</button>
+      <button class="btn btn-ghost" id="victoryMenuBtn">В меню <kbd>Esc</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div id="loading"><div class="ring"></div><span>Сборка станции…</span></div>
+<div id="fatal" hidden></div>
+
+<script src="vendor/babylon.js"></script>
+<script src="js/chamfer.js"></script>
+<script src="js/robot.js"></script>
+<script src="js/game-state.js"></script>
+<script src="js/boosts.js"></script>
+<script src="js/platforms.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
